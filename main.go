@@ -14,7 +14,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type MailinfoStruct struct {
+type emailStruct struct {
 	content     sql.NullString
 	text     sql.NullString
 	email sql.NullString
@@ -34,7 +34,7 @@ func main() {
 	defer db.Close()
 	ctx, cancel := ContextTimeout(ctxBackground)
 	defer cancel()
-	//SELECT mi_type, mi_hash, mi_hashtext, mi_id
+
 	stmt, err := db.PrepareContext(ctx, `
 	SELECT *
 	FROM test_db
@@ -51,43 +51,42 @@ func main() {
 	CheckError(err)
 
 	for rows.Next() {
-		insertMailinfo(db, rows, ctxBackground)
+		insertMail(db, rows, ctxBackground)
 	}
 
 }
 
-func insertMailinfo(db *sql.DB, rows *sql.Rows, ctxBackground context.Context) {
-	var mailinfo MailinfoStruct
+func insertMail(db *sql.DB, rows *sql.Rows, ctxBackground context.Context) {
+	var email emailStruct
 
-	err := rows.Scan(&mailinfo.content, &mailinfo.text, &mailinfo.email, &mailinfo.id)
+	err := rows.Scan(&email.content, &email.text, &email.email, &email.id)
 	CheckError(err)
-	mailinfo.text.String = changeBlob(mailinfo.text.String)
-	if mailinfo.text.String == "" {
-		fmt.Println("decoding err text : ", mailinfo.text.String)
+	email.text.String = decoding(email.text.String)
+	if email.text.String == "" {
+		fmt.Println("decoding err text : ", email.text.String)
 		return
 	}
 	ctx, cancel := ContextTimeout(ctxBackground)
 	defer cancel()
 	stmt, err := db.PrepareContext(ctx, `
-	INSERT INTO new_mailinfo(content, text, email, id)
+	INSERT INTO new_test_db(content, text, email, id)
 	VALUES (?, ?, ?, ?)
 	`)
 	if err != nil {
 		CheckError(err)
-		fmt.Println("decoding err text : ", mailinfo.text.String)
+		fmt.Println("decoding err text : ", email.text.String)
 		return
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, mailinfo.content.String, mailinfo.text.String, mailinfo.email.String, mailinfo.id.Int64)
+	_, err = stmt.ExecContext(ctx, email.content.String, email.text.String, email.email.String, email.id.Int64)
 	if err != nil {
 		CheckError(err)
-		fmt.Println("decoding err text : ", mailinfo.text.String)
+		fmt.Println("decoding err text : ", email.text.String)
 	}
 
 }
 
-// 바이너리로 바꾸기 sqlite3.바이너리리리리리리리릴어카메라디ㅇㅗ
-func changeBlob(str string) string {
+func decoding(str string) string {
 	decodingStr, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
 		CheckError(err)
